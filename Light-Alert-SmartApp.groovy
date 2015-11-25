@@ -93,7 +93,7 @@ def initialize() {
     log.debug(deviceId)
     def existing = getChildDevice(deviceId)
     if (!existing) {
-        def childDevice = addChildDevice("sticks18", "Smart Bulb Alert Momentary", deviceId, null, [label: switchLabel])
+        def childDevice = addChildDevice("sticks18", "Smart Bulb Alert Switch", deviceId, null, [label: switchLabel])
     }
     state.autoOff = getAutoOffDelay()
     state.hueHubOption = getHueHubOption()
@@ -114,12 +114,13 @@ private removeChildDevices(delete) {
 }
 
 private getOffDelay() {
-	def result = null
+	def offSec = null
 	if (autoOff) {
-		result = 5
+		offSec = 5
 		if(offDelay) {
-			result = Math.Min(offDelay, 10)
-			result = Math.Max(offDelay, 1)
+			offSec = Math.Min(offDelay, 10)
+			offSec = Math.Max(offDelay, 1)
+			result = swapEndianHex(hex(offSec, 4))
 		}
 	}
 	return result
@@ -208,6 +209,35 @@ private hideOsramBulbs() {
 	(osramLs) ? false : true
 }
 
+private hex(value, width) {
+	def s = new BigInteger(Math.round(value).toString()).toString(16)
+	while (s.size() < width) {
+		s = "0" + s
+	}
+	s
+}
+
+private Integer convertHexToInt(hex) {
+	Integer.parseInt(hex,16)
+}
+
+private String swapEndianHex(String hex) {
+    reverseArray(hex.decodeHex()).encodeHex()
+}
+
+private byte[] reverseArray(byte[] array) {
+    int i = 0;
+    int j = array.length - 1;
+    byte tmp;
+    while (j > i) {
+        tmp = array[j];
+        array[j] = array[i];
+        array[i] = tmp;
+        j--;
+        i++;
+    }
+    return array
+}
 
 // Child device methods after this point. Instead of subscribing to child, have child directly call parent
 
@@ -231,6 +261,7 @@ def on(childDevice) {
 					childDevice.attWrite(bulb.deviceNetworkId, "0B", "3", "0", "0x21", state.autoOff)
 				}
 			}
+			else {
 				hueDirs.each { bulb ->
 					def payload = state.hueDirOption + " 00"
 					childDevice.zigbeeCmd(bulb.deviceNetworkId, "0B", "3", "0x40", payload)
@@ -243,6 +274,7 @@ def on(childDevice) {
 					childDevice.attWrite(bulb.deviceNetworkId, "03", "3", "0", "0x21", state.autoOff)
 				}
 			}
+			else {
 				osramLs.each { bulb ->
 					def payload = state.osramOption + " 00"
 					childDevice.zigbeeCmd(bulb.deviceNetworkId, "03", "3", "0x40", payload)
@@ -270,6 +302,7 @@ def on(childDevice) {
 					childDevice.zigbeeCmd(bulb.deviceNetworkId, "0B", "3", "0", "")
 				}
 			}
+			else {
 				hueDirs.each { bulb ->
 					def payload = state.hueDirOption + " 00"
 					childDevice.zigbeeCmd(bulb.deviceNetworkId, "0B", "3", "0x40", payload)
@@ -282,6 +315,7 @@ def on(childDevice) {
 					childDevice.zigbeeCmd(bulb.deviceNetworkId, "03", "3", "0", "")
 				}
 			}
+			else {
 				osramLs.each { bulb ->
 					def payload = state.osramOption + " 00"
 					childDevice.zigbeeCmd(bulb.deviceNetworkId, "03", "3", "0x40", payload)
@@ -301,4 +335,64 @@ def on(childDevice) {
 		if(state.hueHubOnly) { sendEvent(childDevice.deviceNetworkId, [name: "switch", value: "off"]) }
 	}
 	
+}
+
+def off(childDevice) {
+	log.debug "Stop Alert"
+	if(state.autoOff != null) {
+		sendEvent(childDevice.deviceNetworkId, [name: "switch", value: "off"])
+	}
+	else {
+		log.debug "Stopping continous alert"
+		if(geLinks != null) {
+			geLinks.each { bulb ->
+				childDevice.zigbeeCmd(bulb.deviceNetworkId, "1", "3", "0", "")
+			}
+		}
+		if(creeCons != null) {
+			creeCons.each { bulb ->
+				childDevice.zigbeeCmd(bulb.deviceNetworkId, "10", "3", "0", "")
+			}
+		}
+		if(state.hueDirOption != null) {
+			if(state.hueDirOption == "") {
+				hueDirs.each { bulb ->
+					childDevice.zigbeeCmd(bulb.deviceNetworkId, "0B", "3", "0", "")
+				}
+			}
+		}
+		if(state.osramOption != null) {
+			if(state.osramOption == "") {
+				osramLs.each { bulb ->
+					childDevice.zigbeeCmd(bulb.deviceNetworkId, "03", "3", "0", "")
+				}
+			}
+		}	
+	}
+	
+}
+
+def allOff(childDevice) {
+	def on(childDevice) {
+	log.debug "Stopping alerts"
+	if(geLinks != null) {
+		geLinks.each { bulb ->
+			childDevice.attWrite(bulb.deviceNetworkId, "1", "3", "0", "0x21", "0001")
+		}
+	}
+	if(creeCons != null) {
+		creeCons.each { bulb ->
+			childDevice.attWrite(bulb.deviceNetworkId, "10", "3", "0", "0x21", "0001")
+		}
+	}
+	if(hueDirs != null) {
+		hueDirs.each { bulb ->
+			childDevice.attWrite(bulb.deviceNetworkId, "0B", "3", "0", "0x21", "0001")
+		}
+	}
+	if(osramLs != null) {
+		osramLs.each { bulb ->
+			childDevice.attWrite(bulb.deviceNetworkId, "03", "3", "0", "0x21", "0001")
+		}
+	}
 }
