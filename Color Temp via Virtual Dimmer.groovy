@@ -84,8 +84,9 @@ def setLevel(childDevice, value) {
   	if (degrees == 6462) { degrees = degrees + 38 }
     
     log.debug "Converting dimmer level ${value} to color temp ${degrees}..."
-    
+    childDevice.updateTemp(degrees)
     cLights?.setColorTemperature(degrees)
+    
 
 
 }
