@@ -19,7 +19,7 @@ definition(
     name: "Smart Bulb Alert (Blink/Flash)",
     namespace: "sticks18",
     author: "Scott Gibson",
-    description: "Creates a virtual momentary button that when turned on will trigger selected smart bulbs to blink or flash",
+    description: "Creates a virtual switch button that when turned on will trigger selected smart bulbs to blink or flash",
     category: "My Apps",
     iconUrl: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience.png",
     iconX2Url: "https://s3.amazonaws.com/smartapp-icons/Convenience/Cat-Convenience%402x.png"
@@ -33,16 +33,16 @@ preferences {
 def basicInfo(){
 	dynamicPage(name: "basicInfo", title: "First, name your trigger and select smart bulb types", nextPage: "configureBulbs", uninstall: true){
 		section("Create Virtual Momentary Button as Trigger") {
-			input "switchLabel", "text", title: "Momentary Button Label", multiple: false, required: true
+			input "switchLabel", "text", title: "Switch Button Label", multiple: false, required: true
 		}
 		section("Choose your Smart Bulbs") {
-			paragraph "How to select your bulbs...", title: "paragraph title", required: true,
-                  		"This SmartApp will work with most zigbee bulbs by directly calling the Identify function built into the hardware. This function is generally run when you first pair a bulb to the hub to let you know it was successful. Different bulbs have different capabilities and/or endpoints to address, so they must be selected separately in this SmartApp. If expanded functionality exists for a particular bulb type, you will be given additional options to select. Caveats: Non-Hue bulbs connected to the Hue Bridge, such as GE Link or Cree Connected, will not work because the Hue API is not designed for them."
+			paragraph "This SmartApp will work with most zigbee bulbs by directly calling the Identify function built into the hardware. This function is generally run when you first pair a bulb to the hub to let you know it was successful. Different bulbs have different capabilities and/or endpoints to address, so they must be selected separately in this SmartApp. If expanded functionality exists for a particular bulb type, you will be given additional options to select. Caveats: Non-Hue bulbs connected to the Hue Bridge, such as GE Link or Cree Connected, will not work because the Hue API is not designed for them.",
+            title: "How to select your bulbs...", required: true
 			input "geLinks", "capability.switch level", title: "Select GE Link Bulbs", required: false, multiple: true
-			input "creeCons", "capability.switch level", title: "Select Cree Connected Bulbs", required: false, multiple: true
-			input "hueHubs", "capability.switch level", title: "Select Hue Bulbs connected to Hue Hub", required: false, multiple: true
-			input "hueDirs", "capability.switch level", title: "Select Hue Bulbs directly connected to ST Hub", required: false, multiple: true
-			input "osramLs", "capability.switch level", title: "Select Osram Lightify Bulbs", required: false, multiple: true
+			//input "creeCons", "capability.switch level", title: "Select Cree Connected Bulbs", required: false, multiple: true
+			//input "hueHubs", "capability.switch level", title: "Select Hue Bulbs connected to Hue Hub", required: false, multiple: true
+			//input "hueDirs", "capability.switch level", title: "Select Hue Bulbs directly connected to ST Hub", required: false, multiple: true
+			//input "osramLs", "capability.switch level", title: "Select Osram Lightify Bulbs", required: false, multiple: true
   		}
 	}
 }
@@ -53,7 +53,7 @@ def configureBulbs(){
 			input "autoOff", "bool", title: "Automatically stop the alert", required: false, submitOnChange: true
 			input "offDelay", "number", title: "Turn off alert after X seconds (default = 5, max = 10)", required: false, submitOnChange: true
 		}
-		section(title: "Options for Hue Bulbs connected to Hue Bridge", hidden: hideHueHubBulbs(), hideable: true) {
+		/*section(title: "Options for Hue Bulbs connected to Hue Bridge", hidden: hideHueHubBulbs(), hideable: true) {
 			input "hBlink", "enum", title: "Select Blink for single flash or Breathe for 15 seconds continuous (default = Breathe)", multiple: false, required: false,
 				options: ["Blink", "Breathe"]
 		}
@@ -64,8 +64,8 @@ def configureBulbs(){
 		section(title: "Options for Osram Lightify Bulbs", hidden: hideOsramBulbs(), hideable: true) {
 			input "osStyle", "enum", title: "Select alert style: Normal = Bulb will blink until stopped via auto-off or trigger", 
 				multiple: false, required: false, options: ["Normal"] 
-		}
-	}	
+		}*/
+	}
 }
 
 
@@ -84,17 +84,21 @@ def updated() {
 }
 
 def initialize() {
+    
+    state.autoOff = offDelay
+   // state.hueHubOption = getHueHubOption()
+   // state.hueDirOption = getHueDirOption()
+   // state.osramOption = getOsramOption()
+   // state.onlyHueHub = getHueHubOnly()
+    
     def deviceId = app.id + "SimulatedSwitch"
     log.debug(deviceId)
     def existing = getChildDevice(deviceId)
+    log.debug existing
     if (!existing) {
+        log.debug "Add child"
         def childDevice = addChildDevice("sticks18", "Smart Bulb Alert Switch", deviceId, null, [label: switchLabel])
     }
-    state.autoOff = getAutoOffDelay()
-    state.hueHubOption = getHueHubOption()
-    state.hueDirOption = getHueDirOption()
-    state.osramOption = getOsramOption()
-    state.onlyHueHub = getHueHubOnly()
     
 }
 
@@ -108,21 +112,25 @@ private removeChildDevices(delete) {
     }
 }
 
-private getOffDelay() {
-	def offSec = null
+/* private getOffDelay() {
+	def result = 5
+    log.debug "autoOff is ${autoOff}"
 	if (autoOff) {
-		offSec = 5
+        result = 5
+        log.debug "offDelay is ${offDelay}"
 		if(offDelay) {
-			offSec = Math.Min(offDelay, 10)
-			offSec = Math.Max(offDelay, 1)
-			result = swapEndianHex(hex(offSec, 4))
+			def offSec = Math.Min(offDelay, 10)
+			offSec = Math.Max(offSec, 1)
+			result = offSec
 		}
 	}
-	return result
+	log.debug "off delay: ${result}"
+    return result
 }
 
 private getHueDirOption() {
 	def result = null
+    log.debug hueDirs
 	if (hueDirs) {
 		switch(hdStyle) {
 			case "Normal":
@@ -142,6 +150,8 @@ private getHueDirOption() {
 				break
 		}
 	}
+    log.debug "hue dir option: ${result}"
+    return result
 }
 
 private getHueHubOnly() {
@@ -163,6 +173,8 @@ private getHueHubOption() {
 				break
 		}
 	}
+    log.debug "hue hub option: ${result}"
+    return result
 }
 
 private getOsramOption() {
@@ -186,8 +198,10 @@ private getOsramOption() {
 				break
 		}
 	}
+    log.debug "osram option: ${result}"
+    return result
 }
-
+*/
 private hideHueHubBulbs() {
 	(hueHubs) ? false : true
 }
@@ -200,7 +214,7 @@ private hideOsramBulbs() {
 	(osramLs) ? false : true
 }
 
-private hex(value, width) {
+private hex(value, width=4) {
 	def s = new BigInteger(Math.round(value).toString()).toString(16)
 	while (s.size() < width) {
 		s = "0" + s
@@ -238,10 +252,13 @@ def on(childDevice) {
 		log.debug "Only alert for ${state.autoOff} seconds"
 		if(geLinks != null) {
 			geLinks.each { bulb ->
-				childDevice.attWrite(bulb.deviceNetworkId, "1", "3", "0", "0x21", state.autoOff)
+				// bulb.setLevel(99, 1800)
+                bulb.alert(state.autoOff)
+                // childDevice.attWrite(bulb.deviceNetworkId, 1, 3, 0, "0x21", state.autoOff)
+                // childDevice.zigbeeCmd(bulb.deviceNetworkId, 1, 3, 0, "")
 			}
 		}
-		if(creeCons != null) {
+		/*if(creeCons != null) {
 			creeCons.each { bulb ->
 				childDevice.attWrite(bulb.deviceNetworkId, "10", "3", "0", "0x21", state.autoOff)
 			}
@@ -271,10 +288,10 @@ def on(childDevice) {
 					childDevice.zigbeeCmd(bulb.deviceNetworkId, "03", "3", "0x40", payload)
 				}
 			}
-		}
-		sendEvent(childDevice.deviceNetworkId, [name: "switch", value: "off"])
+		} */
+		childDevice.justOff()
 		
-	}
+	} /*
 	else {
 		log.debug "Starting continous alert"
 		if(geLinks != null) {
@@ -323,15 +340,15 @@ def on(childDevice) {
 			def value = [hue: hue, saturation: sat, alert: alert]
 			bulb.setColor(value)
 		}
-		if(state.hueHubOnly) { sendEvent(childDevice.deviceNetworkId, [name: "switch", value: "off"]) }
-	}
+		if(state.hueHubOnly) { childDevice.justOff() }
+	}*/
 	
 }
 
 def off(childDevice) {
-	log.debug "Stop Alert"
+	log.debug "Stop Alert" /*
 	if(state.autoOff != null) {
-		sendEvent(childDevice.deviceNetworkId, [name: "switch", value: "off"])
+		childDevice.justOff()
 	}
 	else {
 		log.debug "Stopping continous alert"
@@ -360,11 +377,11 @@ def off(childDevice) {
 			}
 		}	
 	}
-	
+	*/
 }
 
 def allOff(childDevice) {
-	log.debug "Stopping alerts"
+	log.debug "Stopping alerts" /*
 	if(geLinks != null) {
 		geLinks.each { bulb ->
 			childDevice.attWrite(bulb.deviceNetworkId, "1", "3", "0", "0x21", "0100")
@@ -384,5 +401,5 @@ def allOff(childDevice) {
 		osramLs.each { bulb ->
 			childDevice.attWrite(bulb.deviceNetworkId, "03", "3", "0", "0x21", "0100")
 		}
-	}
-}
+	} */
+} 
