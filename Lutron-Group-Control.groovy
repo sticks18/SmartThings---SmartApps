@@ -20,7 +20,7 @@ def inputPage() {
             title: "First let's get the Group Id from your Remote by checking an already connected bulb", required: true        
         input (name: "remote", type: "capability.button", title: "Lutron Remote", multiple: false, required: true, submitOnChange: true)
 		input (name: "cBulb", type: "capability.switch", title: "Select a bulb connected to the remote", multiple: false, required: true, submitOnChange: true)
-		input (name: "endpoint", type: "number", title: "Zigbee Endpoint of selected bulb", required: true, submitOnChange: true)
+		input (name: "endpoint", type: "text", title: "Zigbee Endpoint of selected bulb", required: true, submitOnChange: true)
     }
     
     if (remote && cBulb && endpoint) {
@@ -32,7 +32,7 @@ def inputPage() {
         }
     	section("Now let's pick some new bulbs"){
 			input (name: "nBulbs", type: "capability.switch", title: "Select bulbs to add to the remote (all must use same endpoint)", multiple: true, required: true)
-            input (name: "nBulbEp", type: "number", title: "Zigbee Endpoint of selected bulbs", required: true)
+            input (name: "nBulbEp", type: "text", title: "Zigbee Endpoint of selected bulbs", required: true)
 		}
     }
     }
